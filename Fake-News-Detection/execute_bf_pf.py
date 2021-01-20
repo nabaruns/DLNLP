@@ -7,9 +7,9 @@ from utils import process
 from gat_adj_features import GATInputGenerator
 
 parser = argparse.ArgumentParser(
-    description='Task: Fake news detection, File: execute_bf_pf.py Datasets: BuzzFeed, PolitiFact',
+    description='Task: Fake news detection, File: execute_bf_pf.py Datasets: BuzzFeed, PolitiFact, FakeNews',
 )
-parser.add_argument('dataset', action="store", choices=set(('BuzzFeed', 'PolitiFact')))
+parser.add_argument('dataset', action="store", choices=set(('BuzzFeed', 'PolitiFact', 'FakeNews')))
 input = vars(parser.parse_args())
 dataset = input['dataset']
 
@@ -17,10 +17,15 @@ if dataset == "BuzzFeed":
     checkpt_file = 'pre_trained/BuzzFeed/mod_BuzzFeed.ckpt'
     lr = 0.01
     l2_coef = 0.0005
-else:
+elif dataset == "PolitiFact":
     checkpt_file = 'pre_trained/PolitiFact/mod_PolitiFact.ckpt'
     lr = 0.01
     l2_coef = 0.005
+else:
+    checkpt_file = 'pre_trained/FakeNews/mod_FakeNews.ckpt'
+    lr = 0.01
+    l2_coef = 0.005
+    
 
 # training params
 batch_size = 1

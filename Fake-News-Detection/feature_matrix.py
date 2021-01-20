@@ -53,7 +53,11 @@ class FeatureMatrix:
         return tokenization.FullTokenizer(vocab_file=vocab_file, do_lower_case=do_lower_case)
 
     def get_feature_matrix(self, dataset = "BuzzFeed"):
-        all_data_df = self.get_folder_data(folder=dataset)
+        if dataset in ["BuzzFeed", "PolitiFact"]:
+            all_data_df = self.get_folder_data(folder=dataset)
+        else:
+#             print(dataset)
+            all_data_df = pd.read_csv(self.base_path+"truefake.csv")
         all_data_df = all_data_df.sample(frac=1)
 
         inputExamples = all_data_df.apply(lambda x: run_classifier.InputExample(guid=None,
@@ -80,4 +84,4 @@ if __name__ == "__main__":
     base_path = "../dataset/"
 
     adj = FeatureMatrix(base_path)
-    res = adj.get_feature_matrix("PolitiFact")
+    res = adj.get_feature_matrix("FakeNews")

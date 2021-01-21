@@ -80,9 +80,6 @@ class FeatureMatrix:
         nlp = spacy.load('en_core_web_md')
         stop_words = spacy.lang.en.stop_words.STOP_WORDS
         all_docs = DocPreprocess(nlp, stop_words, all_data_df['text'], all_data_df['label'])
-        
-        # Configure keyed arguments for Doc2Vec model.
-
         workers = multiprocessing.cpu_count()
         dm_args = {
             'dm': 1,

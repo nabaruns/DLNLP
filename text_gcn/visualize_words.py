@@ -2,8 +2,19 @@ from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt
 import numpy as np
+import sys
 
-f = open('data/ohsumed_word_vectors_1.txt', 'r')
+if len(sys.argv) != 2:
+	sys.exit("Use: python visualize_words.py <dataset>")
+
+datasets = ['20ng', 'R8', 'R52', 'ohsumed', 'mr', 'cora', 'pubmed', 'citeseer', 'fakenews', 'buzzfeed', 'politifact']
+dataset = sys.argv[1]
+
+
+if dataset not in datasets:
+	sys.exit("wrong dataset name")
+
+f = open('data/'+dataset+'_doc_vectors_0.txt', 'r')
 embedding_lines = f.readlines()
 f.close()
 
@@ -26,7 +37,7 @@ target_names = list(target_names)
 label = np.array(labels)
 
 fea = TSNE(n_components=2).fit_transform(docs)
-pdf = PdfPages('ohsumed_gcn_word_2nd_layer.pdf')
+pdf = PdfPages(dataset+'_gcn_word_0_layer.pdf')
 cls = np.unique(label)
 
 # cls=range(10)
@@ -42,5 +53,5 @@ for i, f in enumerate(fea_num):
 # plt.title(md_file)
 plt.tight_layout()
 pdf.savefig()
-plt.show()
+# plt.show()
 pdf.close()

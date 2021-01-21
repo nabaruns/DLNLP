@@ -6,6 +6,12 @@ import tensorflow as tf
 import tensorflow_hub as hub
 from bert import run_classifier
 from bert import tokenization
+import spacy
+
+from utils.UtilWordEmbedding import DocModel, DocPreprocess
+import multiprocessing
+import sys
+from gensim.models.word2vec import Word2Vec
 
 
 class FeatureMatrix:
@@ -41,16 +47,26 @@ class FeatureMatrix:
         # all_data_df = pd.concat([bf_data_df, pf_data_df])
 
         return bf_data_df
-
-    def create_tokenizer_from_hub_module(self):
-        with tf.Graph().as_default():
-            bert_module = hub.Module("https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1")
-            tokenization_info = bert_module(signature="tokenization_info", as_dict=True)
-            with tf.Session() as sess:
-                vocab_file, do_lower_case = sess.run([tokenization_info["vocab_file"],
-                                                      tokenization_info["do_lower_case"]])
-
-        return tokenization.FullTokenizer(vocab_file=vocab_file, do_lower_case=do_lower_case)
+    
+    def loadWord2Vec(self, filename):
+        """Read Word Vectors"""
+        vocab = []
+        embd = []
+        word_vector_map = {}
+        file = open(filename, 'r')
+        for line in file.readlines():
+            row = line.strip().split(' ')
+            if(len(row) > 2):
+                vocab.append(row[0])
+                vector = row[1:]
+                length = len(vector)
+                for i in range(length):
+                    vector[i] = float(vector[i])
+                embd.append(vector)
+                word_vector_map[row[0]] = vector
+        print('Loaded Word Vectors!')
+        file.close()
+        return vocab, embd, word_vector_map
 
     def get_feature_matrix(self, dataset = "BuzzFeed"):
         if dataset in ["BuzzFeed", "PolitiFact"]:
@@ -58,25 +74,41 @@ class FeatureMatrix:
         else:
 #             print(dataset)
             all_data_df = pd.read_csv(self.base_path+"truefake.csv")
+        
         all_data_df = all_data_df.sample(frac=1)
 
-        inputExamples = all_data_df.apply(lambda x: run_classifier.InputExample(guid=None,
-                                                                                text_a=x['text'],
-                                                                                text_b=None,
-                                                                                label=x['label']),
-                                          axis=1)
-        tokenizer = self.create_tokenizer_from_hub_module()
-        features = run_classifier.convert_examples_to_features(inputExamples, [0, 1], 128, tokenizer)
+        nlp = spacy.load('en_core_web_md')
+        stop_words = spacy.lang.en.stop_words.STOP_WORDS
+        all_docs = DocPreprocess(nlp, stop_words, all_data_df['text'], all_data_df['label'])
+        
+        # Configure keyed arguments for Doc2Vec model.
 
-        train_features_list = []
-        for item in features:
-            temp = item.input_ids
-            temp.append(item.label_id)
-            train_features_list.append(temp)
+        workers = multiprocessing.cpu_count()
+        dm_args = {
+            'dm': 1,
+            'dm_mean': 1,
+            'vector_size': 128,
+            'window': 5,
+            'negative': 5,
+            'hs': 0,
+            'min_count': 2,
+            'sample': 0,
+            'workers': workers,
+            'alpha': 0.025,
+            'min_alpha': 0.025,
+            'epochs': 100,
+            'comment': 'alpha=0.025'
+        }
+        dm = DocModel(docs=all_docs.tagdocs, **dm_args)
+        dm.custom_train()
+        features = []
+        for i in range(len(dm.model.docvecs)):
+            features.append(dm.model.docvecs[i])
+
         column_names = ["feature" + str(i) for i in range(128)]
-        column_names.append("label")
-        features_df = pd.DataFrame(train_features_list, columns=column_names)
-
+        features_df = pd.DataFrame(features, columns=column_names)
+        features_df["label"] = all_data_df['label']
+    
         return features_df
 
 
